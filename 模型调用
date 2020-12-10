@@ -1,0 +1,34 @@
+import cv2
+import matplotlib.pyplot as plt
+from scipy import misc
+import numpy as np
+from keras.models import load_model
+
+model = load_model('model_10.h5')  #选取自己的.h模型名称
+
+image = cv2.imread('./testimages/wan1.png')
+img = cv2.cvtColor(image,cv2.COLOR_RGB2GRAY) # RGB图像转为gray
+
+char_set = "一丁七万丈三上下不与"
+print(char_set)
+
+ #需要用reshape定义出例子的个数，图片的长与宽，图片的通道数。具体的参加keras文档
+img = (img.reshape(1, 64, 64, 1)).astype('int32')/255
+predict = model.predict(img)
+print ('预测结果分别为：')
+print (predict)
+
+print(np.max(predict)) #打印最大概率值
+print(np.argmax(predict)) # 打印最大值位置
+
+print ('预测该结果为：')
+print(char_set[np.argmax(predict)])    #在索引中找到对应的字
+
+# cv2.imshow("Image1", image)   #打印图片
+# cv2.waitKey(0)
+
+image_newsize=misc.imresize(image,[160,180])
+plt.imshow(image_newsize)
+plt.axis('off')
+plt.show()
+
