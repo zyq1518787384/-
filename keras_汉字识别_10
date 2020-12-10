@@ -76,7 +76,7 @@ def build_model(include_top=True, input_shape=(64, 64, 1), classes=charset_size)
     return model
 
 
-model = build_model()
-# model = load_model("./model_10.h5")
+model = build_model()   #构建模型
+# model = load_model("./model_10.h5")    #加载模型，如果要重复训练，就打开load_model，注释build_model
 train(model)
 model.save("./model_10.h5")
