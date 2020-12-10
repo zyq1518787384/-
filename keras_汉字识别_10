@@ -1,0 +1,82 @@
+from __future__ import print_function
+
+from keras.preprocessing.image import ImageDataGenerator
+from keras.layers import Input, Dense, Dropout, Convolution2D, MaxPooling2D, Flatten
+from keras.models import Model, load_model
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+data_dir = './data'
+train_data_dir = os.path.join(data_dir, 'train_10')
+test_data_dir = os.path.join(data_dir, 'test_10')
+# dimensions of our images.
+img_width, img_height = 64, 64
+charset_size = 10 # 要训练的文字数量
+nb_validation_samples = 8  # 每个epoch用到验证集的样本个数
+nb_samples_per_epoch = 64  # 每个epoch要处理的训练集样本数
+nb_nb_epoch = 200  # 数据总迭代次数
+
+
+def train(model):
+    # 训练集图片需要做的处理
+    train_datagen = ImageDataGenerator(
+      rescale=1. / 255,
+      rotation_range=0,
+      width_shift_range=0.1,
+      height_shift_range=0.1
+    )
+    # 测试集需要做的处理
+    test_datagen = ImageDataGenerator(rescale=1./255)
+
+    # 训练集批处理
+    train_generator = train_datagen.flow_from_directory(
+      train_data_dir,
+      target_size=(img_width, img_height),
+      batch_size=32,
+      color_mode="grayscale",
+      class_mode='categorical')
+
+    # 训练集批处理
+    validation_generator = test_datagen.flow_from_directory(
+      test_data_dir,
+      target_size=(img_width, img_height),
+      batch_size=32,
+      color_mode="grayscale",
+      class_mode='categorical')
+
+    #
+    model.compile(loss='categorical_crossentropy',
+                  optimizer='rmsprop',
+                  metrics=['accuracy'])
+    model.fit_generator(train_generator,  # 批处理过的训练集
+                        samples_per_epoch=nb_samples_per_epoch,  # 每个epoch要处理的样本数
+                        nb_epoch=nb_nb_epoch,  # 数据总迭代次数
+                        validation_data=validation_generator,  # 批处理过的训练集
+                        nb_val_samples=nb_validation_samples)  # 每个epoch用到训练集的样本个数
+
+
+def build_model(include_top=True, input_shape=(64, 64, 1), classes=charset_size):
+    # input(64,64,1)    output(16,16,64)     长，宽，通道
+    img_input = Input(shape=input_shape)
+    x = Convolution2D(32, 3, 3, activation='relu', border_mode='same', name='block1_conv1')(img_input)
+    x = Convolution2D(32, 3, 3, activation='relu', border_mode='same', name='block1_conv2')(x)
+    x = MaxPooling2D((2, 2), strides=(2, 2), name='block1_pool')(x)
+    x = Convolution2D(64, 3, 3, activation='relu', border_mode='same', name='block2_conv1')(x)
+    x = Convolution2D(64, 3, 3, activation='relu', border_mode='same', name='block2_conv2')(x)
+    x = MaxPooling2D((2, 2), strides=(2, 2), name='block2_pool')(x)
+
+    if include_top:
+        x = Flatten(name='flatten')(x)  # 一维化
+        x = Dropout(0.05)(x)  # 防止过拟合，0.05的概率丢掉
+        x = Dense(4096, activation='relu', name='fc2')(x)  # 全连接层----------------------------------改动了
+        # x = Dense(1024, activation='relu', name='fc2')(x)  # 全连接层
+        x = Dense(classes, activation='softmax', name='predictions')(x)  # 输出分类 3755个
+
+    model = Model(img_input, x, name='model')  # 64*64*1 ------》》》 3755*1  即分类结果
+    return model
+
+
+model = build_model()
+# model = load_model("./model_10.h5")
+train(model)
+model.save("./model_10.h5")
